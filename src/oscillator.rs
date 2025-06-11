@@ -1,0 +1,175 @@
+use core::fmt;
+use core::ops::{Deref, DerefMut};
+
+pub type Frame<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> = [Buffer<BUFFER_SIZE>; CHANNEL_COUNT];
+
+pub struct Buffer<const BUFFER_SIZE: usize> {
+    data: [f32; BUFFER_SIZE],
+}
+
+impl<const N: usize> Buffer<N> {
+    /// A silent **Buffer**.
+    pub const SILENT: Self = Buffer { data: [0.0; N] };
+}
+
+impl<const N: usize> Default for Buffer<N> {
+    fn default() -> Self {
+        Self::SILENT
+    }
+}
+
+impl<const N: usize> From<[f32; N]> for Buffer<N> {
+    fn from(data: [f32; N]) -> Self {
+        Buffer { data }
+    }
+}
+
+impl<const N: usize> fmt::Debug for Buffer<N> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.data[..], f)
+    }
+}
+
+impl<const N: usize> PartialEq for Buffer<N> {
+    fn eq(&self, other: &Self) -> bool {
+        self[..] == other[..]
+    }
+}
+
+impl<const N: usize> Deref for Buffer<N> {
+    type Target = [f32];
+    fn deref(&self) -> &Self::Target {
+        &self.data[..]
+    }
+}
+
+impl<const N: usize> DerefMut for Buffer<N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.data[..]
+    }
+}
+
+pub enum Msg {
+    SetParam(ParamMsg)
+}
+
+pub enum ParamMsg {
+    Oscillator(OscillatorMsg)
+}
+
+pub enum OscillatorMsg {
+    SetWave(Wave)
+}
+
+pub trait Node<const N: usize> {
+    fn process(&mut self, output: &mut [Buffer<N>]);
+}
+
+// Wave
+
+pub enum Wave {
+    SinWave,
+    SawWave,
+    TriangleWave,
+    SquareWave,
+}
+
+pub struct Oscillator<const BUFFER_SIZE: usize> {
+    freq: f32,
+    sample_rate: f32,
+    phase: f32,
+    wave: Wave
+}
+
+impl<const N: usize> Oscillator<N> {
+    pub fn new(freq: f32, sample_rate: f32, phase: f32, wave: Wave) -> Self {
+        Self {
+            freq,
+            sample_rate,
+            phase,
+            wave
+        }
+    }
+    pub fn set_wave_form(&mut self, wave: Wave){
+        self.wave = wave;
+    }
+    // #[inline] - could be a decent option here but benchmark first
+    fn tick_osc(&mut self) -> f32 {
+        let sample = match self.wave {
+            Wave::SinWave => sin_amp_from_phase(&self.phase),
+            Wave::SawWave => saw_amp_from_phase(&self.phase),
+            Wave::SquareWave => square_amp_from_phase(&self.phase),
+            Wave::TriangleWave => triangle_amp_from_phase(&self.phase),
+        };
+        self.phase += self.freq / self.sample_rate;
+        self.phase -= (self.phase >= 1.0) as u32 as f32; 
+        sample
+    }
+}
+
+impl<const N: usize> Node<N> for Oscillator<N> {
+     fn process(&mut self, output: &mut [Buffer<N>]){
+        for i in 0..N {
+            let sample = self.tick_osc();
+            for buf in output.iter_mut() {
+                buf[i] = sample;
+            }
+        }
+    }
+}
+
+fn sin_amp_from_phase(phase: &f32) -> f32 {
+    (*phase * 2.0 * std::f32::consts::PI).sin()
+}
+
+fn saw_amp_from_phase(phase: &f32) -> f32 {
+    *phase * 2.0 - 1.0
+}
+
+fn triangle_amp_from_phase(phase: &f32) -> f32 {
+    2.0 * ((-1.0 + (*phase * 2.0)).abs() - 0.5)
+}
+
+fn square_amp_from_phase(phase: &f32) -> f32 {
+    match *phase <= 0.5 {
+        true => 1.0,
+        false => -1.0,
+    }
+}
+
+/// Fow now, we are using an enum to avoid Box + dyn
+/// 
+/// This is probably some sort of premature optimization
+pub enum PipelineNode<const N: usize> {
+    OscillatorNode(Oscillator<N>)
+}
+impl<const N: usize> Node<N> for PipelineNode<N> {
+    fn process(&mut self, output: &mut [Buffer<N>]) {
+        match self {
+            PipelineNode::OscillatorNode(node) => node.process(output),
+        }
+    }
+}
+
+/// Here we are running process on all of the nodes, in a pipeline format.
+/// This was chose because it's simple, and allows us to move to a graph if 
+/// we truly need it down the line. Additionally, the pipeline is expected to render
+/// audio to the main thread in the requested channel count.
+pub struct AudioPipeline<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> {
+    nodes: Vec<PipelineNode<BUFFER_SIZE>>,
+    buffer: Frame<BUFFER_SIZE, CHANNEL_COUNT>
+}
+impl<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> AudioPipeline<BUFFER_SIZE, CHANNEL_COUNT> {
+    pub fn new(nodes: Vec<PipelineNode<BUFFER_SIZE>>) -> Self {
+        Self {
+            nodes: nodes,
+            buffer: std::array::from_fn(|_| Buffer::<BUFFER_SIZE>::default()),
+        }
+    }
+    pub fn next_frame(&mut self) -> &Frame<BUFFER_SIZE, CHANNEL_COUNT> {
+        for node in self.nodes.iter_mut() {
+            node.process(&mut self.buffer);
+        }
+        &self.buffer
+    }
+}
