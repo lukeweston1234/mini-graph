@@ -23,7 +23,6 @@
             rustc 
             rustfmt 
             alsa-lib 
-            gcc
             pre-commit 
             rustPackages.clippy 
             linuxKernel.packages.linux_zen.perf

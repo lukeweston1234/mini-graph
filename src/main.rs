@@ -62,38 +62,12 @@ where
     }
 }
 
-// fn write_data<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize, T>(
-//     output: &mut [T],
-// )
-// where
-//     T: SizedSample + FromSample<f64>,
-// {
-//     // Test 1: Just fill with silence - is this fast?
-//     // for sample in output.iter_mut() {
-//     //     *sample = T::from_sample(0.0);
-//     // }
-    
-//     // Test 2: Skip pipeline processing - just use a simple oscillator
-//     static mut PHASE: f32 = 0.0;
-//     for chunk in output.chunks_mut(CHANNEL_COUNT) {
-//         unsafe {
-//             let sample = (PHASE * 2.0 * std::f32::consts::PI).sin() * 0.1;
-//             PHASE += 440.0 / 48000.0;
-//             if PHASE >= 1.0 { PHASE -= 1.0; }
-            
-//             for s in chunk {
-//                 *s = T::from_sample(sample as f64);
-//             }
-//         }
-//     }
-// }
-
 const CHANNEL_COUNT: usize = 2;
 const FRAME_SIZE: usize = 1024;
 const SAMPLE_RATE: u32 = 48_000;
 
 fn main() {
-    let host = cpal::default_host();
+    // let host = cpal::default_host();
 
     let host = cpal::host_from_id(cpal::HostId::Jack)
         .expect("JACK host not available");
