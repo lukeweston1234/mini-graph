@@ -1,4 +1,4 @@
-use crate::buffer::Buffer;
+use crate::{buffer::Buffer, node::Node};
 
 pub enum Wave {
     SinWave,
@@ -38,7 +38,9 @@ impl<const N: usize> Oscillator<N> {
         self.phase -= (self.phase >= 1.0) as u32 as f32; 
         sample
     }
-    pub fn process(&mut self, _: &[Buffer<N>], output: &mut [Buffer<N>]){
+}
+impl<const N: usize> Node<N> for Oscillator<N> {
+    fn process(&mut self, _: &[Buffer<N>], output: &mut [Buffer<N>]){
         for i in 0..N {
             let sample = self.tick_osc();
             for buf in output.iter_mut() {

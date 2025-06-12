@@ -3,7 +3,6 @@ use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{BufferSize, BuildStreamError, FromSample, SampleRate, SizedSample, StreamConfig};
 use jack_demo::oscillator::{Oscillator, Wave};
 use jack_demo::pipeline::AudioPipeline;
-use jack_demo::node::{PipelineNode};
 use jack_demo::params::*;
 use jack_demo::adsr::ADSR;
 use jack_demo::stream::write_data;
@@ -15,9 +14,7 @@ fn run<const N: usize, T>(device: &cpal::Device, config: &cpal::StreamConfig) ->
 where
     T: SizedSample + FromSample<f64>,
 {
-    let triangle_wave = Oscillator::new(440.0, SAMPLE_RATE as f32, 0.0, Wave::SinWave);
-
-    let triangle_wave_enum = PipelineNode::OscillatorNode(triangle_wave);
+    let triangle_wave = Oscillator::new(440.0, SAMPLE_RATE as f32, 0.0, Wave::SquareWave);
 
     let trig = ParamBool::new(true);
 
@@ -28,7 +25,7 @@ where
         trig_param.store(false);
     });
 
-    let adsr = ADSR { 
+    let adsr = ADSR::<FRAME_SIZE> { 
         attack: ParamF32::new(4.0), 
         sustain: ParamF32::new(0.3), 
         decay: ParamF32::new(4.0), 
@@ -41,10 +38,8 @@ where
         trig: trig
     };
 
-    let adsr_enum = PipelineNode::ADSRNode(adsr);
     
-
-    let mut pipeline = AudioPipeline::new(vec![triangle_wave_enum, adsr_enum]);
+    let mut pipeline = AudioPipeline::new(vec![Box::new(triangle_wave), Box::new(adsr)]);
 
     // TODO: Audit if assert_no_alloc actually does anything, I seam to be able to alloc on the audio thread
 

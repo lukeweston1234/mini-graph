@@ -46,21 +46,13 @@ impl<const N: usize> Node<N> for ADSR<N> {
                 if self.delta_release_time.get() < self.release.get() {
                     volume = lerp(self.amplitude_scalar.get(), 0.0, self.delta_release_time.get() / self.release.get() as f32);
                 }
-    
                 else {
                     volume = 0.0;
                 }
-    
                 if self.delta_release_time.get() < self.release.get(){
                     let inc_time = (1.0) / self.sample_rate.get() as f32;
                     self.delta_release_time.add(inc_time);
                 }
-    
-                // println!("amp_scalar: {:?}", self.amplitude_scalar.get());
-    
-                // println!("d_release_time: {:?}", self.delta_release_time.get());
-    
-                // panic!();
             }
                 
             self.delta_time.add((1.0) / self.sample_rate.get() as f32);

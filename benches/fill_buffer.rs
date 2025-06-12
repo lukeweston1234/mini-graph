@@ -3,7 +3,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
 use jack_demo::oscillator::{Oscillator, Wave};
 use jack_demo::pipeline::AudioPipeline;
-use jack_demo::node::{PipelineNode};
 use jack_demo::params::*;
 use jack_demo::adsr::ADSR;
 use jack_demo::stream::write_data;
@@ -14,7 +13,6 @@ const SAMPLE_RATE: u32 = 48_000;
 
 fn make_pipeline() -> AudioPipeline<FRAME_SIZE, CHANNEL_COUNT> {
     let osc = Oscillator::new(440.0, SAMPLE_RATE as f32, 0.0, Wave::SinWave);
-    let osc_node = PipelineNode::OscillatorNode(osc);
 
     let trig = ParamBool::new(true);
     let adsr = ADSR {
@@ -29,9 +27,8 @@ fn make_pipeline() -> AudioPipeline<FRAME_SIZE, CHANNEL_COUNT> {
         release: ParamF32::new(4.0),
         trig: trig.clone(),
     };
-    let adsr_node = PipelineNode::ADSRNode(adsr);
 
-    AudioPipeline::new(vec![osc_node, adsr_node])
+    AudioPipeline::new(vec![Box::new(osc), Box::new(adsr)])
 }
 
 fn bench_fill_buffer(c: &mut Criterion) {

@@ -9,7 +9,7 @@ pub struct AudioPipeline<
     const BUFFER_SIZE: usize,
     const CHANNEL_COUNT: usize,
 > {
-    nodes: Vec<PipelineNode<BUFFER_SIZE>>,
+    nodes: Vec<Box<dyn Node<BUFFER_SIZE> + Send>>,
     bufs: [Frame<BUFFER_SIZE, CHANNEL_COUNT>; 2],
     idx: usize, // 0 = use bufs[0] as “in”, 1 = use bufs[1]
 }
@@ -17,7 +17,7 @@ pub struct AudioPipeline<
 impl<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize>
     AudioPipeline<BUFFER_SIZE, CHANNEL_COUNT>
 {
-    pub fn new(nodes: Vec<PipelineNode<BUFFER_SIZE>>) -> Self {
+    pub fn new(nodes: Vec<Box<dyn Node<BUFFER_SIZE> + Send>>) -> Self {
         let bufs = std::array::from_fn(|_| std::array::from_fn(|_| Buffer::<BUFFER_SIZE>::default()));
         Self {
             nodes,
