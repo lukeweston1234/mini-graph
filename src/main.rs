@@ -1,16 +1,11 @@
 use assert_no_alloc::*;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{BufferSize, BuildStreamError, FromSample, SampleRate, SizedSample, StreamConfig};
-use oscillator::{Oscillator};
+use jack_demo::oscillator::{AudioPipeline, PipelineNode, Oscillator, Wave};
+use jack_demo::params::*;
+use jack_demo::adsr::ADSR;
+use jack_demo::stream::write_data;
 
-use crate::oscillator::{AudioPipeline, PipelineNode};
-use crate::params::*;
-use crate::adsr::ADSR;
-
-mod oscillator;
-mod params;
-mod adsr;
-mod math;
 
 /// Settings up the output stream with the given config. This was heavily "inspired" by 
 /// some of the examples on FunDSP.
@@ -18,7 +13,7 @@ fn run<const N: usize, T>(device: &cpal::Device, config: &cpal::StreamConfig) ->
 where
     T: SizedSample + FromSample<f64>,
 {
-    let triangle_wave = Oscillator::new(440.0, SAMPLE_RATE as f32, 0.0, oscillator::Wave::SinWave);
+    let triangle_wave = Oscillator::new(440.0, SAMPLE_RATE as f32, 0.0, Wave::SinWave);
 
     let triangle_wave_enum = PipelineNode::OscillatorNode(triangle_wave);
 
@@ -31,7 +26,7 @@ where
         trig_param.store(false);
     });
 
-    let mut adsr = ADSR { 
+    let adsr = ADSR { 
         attack: ParamF32::new(4.0), 
         sustain: ParamF32::new(0.3), 
         decay: ParamF32::new(4.0), 
@@ -70,27 +65,6 @@ where
 }
 
 
-// / The function that takes an input from the audio pipeline, 
-// / and delivers it to the CPAL slice. The CPAL slice is a 
-// / frame of a certain buffer size. If you request a buffer size of 256,
-// / with 2 channels, the output will have a length of 512. This function
-// / also takes ownership of the audio pipeline.
-fn write_data<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize, T>(
-    output: &mut [T],
-    audio_pipeline: &mut AudioPipeline<BUFFER_SIZE, CHANNEL_COUNT>,
-)
-where
-    T: SizedSample + FromSample<f64>,
-{    
-    let next_pipeline_buffer = audio_pipeline.next_frame();
-
-    for (frame_index, frame) in output.chunks_mut(CHANNEL_COUNT).enumerate() {
-        for (channel, sample) in frame.iter_mut().enumerate() {
-            let pipeline_next_frame = &next_pipeline_buffer[channel];
-            *sample = T::from_sample(pipeline_next_frame[frame_index] as f64);
-        }
-    }
-}
 
 const CHANNEL_COUNT: usize = 2;
 const FRAME_SIZE: usize = 512;
