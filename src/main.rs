@@ -41,8 +41,6 @@ where
     
     let mut pipeline = AudioPipeline::new(vec![Box::new(triangle_wave), Box::new(adsr)]);
 
-    // TODO: Audit if assert_no_alloc actually does anything, I seam to be able to alloc on the audio thread
-
     let stream = device.build_output_stream(
         config,
         move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
@@ -54,8 +52,6 @@ where
 
     stream.play().unwrap();
 
-    // Block the main thread (or sleep forever, or do other work).
-    // For example:
     std::thread::park();
 
     Ok(())
