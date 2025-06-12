@@ -4,8 +4,13 @@ use cpal::{BufferSize, BuildStreamError, FromSample, SampleRate, SizedSample, St
 use oscillator::{Oscillator};
 
 use crate::oscillator::{AudioPipeline, PipelineNode};
+use crate::params::*;
+use crate::adsr::ADSR;
 
 mod oscillator;
+mod params;
+mod adsr;
+mod math;
 
 /// Settings up the output stream with the given config. This was heavily "inspired" by 
 /// some of the examples on FunDSP.
@@ -17,7 +22,32 @@ where
 
     let triangle_wave_enum = PipelineNode::OscillatorNode(triangle_wave);
 
-    let mut pipeline = AudioPipeline::new(vec![triangle_wave_enum]);
+    let trig = ParamBool::new(true);
+
+    let trig_param = trig.clone();
+
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(12));
+        trig_param.store(false);
+    });
+
+    let mut adsr = ADSR { 
+        attack: ParamF32::new(4.0), 
+        sustain: ParamF32::new(0.3), 
+        decay: ParamF32::new(4.0), 
+        delta_time: ParamF32::new(0.0), 
+        amplitude_scalar: ParamF32::new(0.0), 
+        sample_rate: ParamU32::new(config.sample_rate.0), 
+        channels: ParamU32::new(2), 
+        delta_release_time: ParamF32::new(0.0), 
+        release: ParamF32::new(4.0),
+        trig: trig
+    };
+
+    let adsr_enum = PipelineNode::ADSRNode(adsr);
+    
+
+    let mut pipeline = AudioPipeline::new(vec![triangle_wave_enum, adsr_enum]);
 
     // TODO: Audit if assert_no_alloc actually does anything, I seam to be able to alloc on the audio thread
 
@@ -63,7 +93,7 @@ where
 }
 
 const CHANNEL_COUNT: usize = 2;
-const FRAME_SIZE: usize = 1024;
+const FRAME_SIZE: usize = 512;
 const SAMPLE_RATE: u32 = 48_000;
 
 fn main() {
