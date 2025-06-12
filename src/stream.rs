@@ -1,4 +1,4 @@
-use crate::oscillator::AudioPipeline;
+use crate::pipeline::AudioPipeline;
 use cpal::{SizedSample, FromSample};
 
 // / The function that takes an input from the audio pipeline, 

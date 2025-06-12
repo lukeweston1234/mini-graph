@@ -1,7 +1,9 @@
 use assert_no_alloc::*;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{BufferSize, BuildStreamError, FromSample, SampleRate, SizedSample, StreamConfig};
-use jack_demo::oscillator::{AudioPipeline, PipelineNode, Oscillator, Wave};
+use jack_demo::oscillator::{Oscillator, Wave};
+use jack_demo::pipeline::AudioPipeline;
+use jack_demo::node::{PipelineNode};
 use jack_demo::params::*;
 use jack_demo::adsr::ADSR;
 use jack_demo::stream::write_data;

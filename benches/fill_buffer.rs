@@ -1,9 +1,11 @@
 // benches/write_data.rs
 
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use jack_demo::oscillator::*;
+use jack_demo::oscillator::{Oscillator, Wave};
+use jack_demo::pipeline::AudioPipeline;
+use jack_demo::node::{PipelineNode};
+use jack_demo::params::*;
 use jack_demo::adsr::ADSR;
-use jack_demo::params::{ParamBool, ParamF32, ParamU32};
 use jack_demo::stream::write_data;
 
 const CHANNEL_COUNT: usize = 2;

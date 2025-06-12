@@ -1,4 +1,4 @@
-use crate::oscillator::Node;
+use crate::node::Node;
 use crate::buffer::Buffer;
 use crate::params::*;
 use crate::math::lerp;
