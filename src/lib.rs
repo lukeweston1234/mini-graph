@@ -6,3 +6,6 @@ pub mod stream;
 pub mod buffer;
 pub mod pipeline;
 pub mod node;
+pub mod delay_stereo;
+pub mod graph;
+pub mod audio_graph;

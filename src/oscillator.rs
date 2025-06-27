@@ -15,10 +15,10 @@ pub struct Oscillator<const BUFFER_SIZE: usize> {
 }
 
 impl<const N: usize> Oscillator<N> {
-    pub fn new(freq: f32, sample_rate: f32, phase: f32, wave: Wave) -> Self {
+    pub fn new(freq: f32, sample_rate: u32, phase: f32, wave: Wave) -> Self {
         Self {
             freq,
-            sample_rate,
+            sample_rate: sample_rate as f32,
             phase,
             wave
         }
@@ -34,7 +34,7 @@ impl<const N: usize> Oscillator<N> {
             Wave::SquareWave => square_amp_from_phase(&self.phase),
             Wave::TriangleWave => triangle_amp_from_phase(&self.phase),
         };
-        self.phase += self.freq / self.sample_rate;
+        self.phase += self.freq / self.sample_rate as f32;
         self.phase -= (self.phase >= 1.0) as u32 as f32; 
         sample
     }

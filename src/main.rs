@@ -14,7 +14,7 @@ fn run<const N: usize, T>(device: &cpal::Device, config: &cpal::StreamConfig) ->
 where
     T: SizedSample + FromSample<f64>,
 {
-    let triangle_wave = Oscillator::new(440.0, SAMPLE_RATE as f32, 0.0, Wave::SquareWave);
+    let triangle_wave = Oscillator::new(440.0, SAMPLE_RATE, 0.0, Wave::SquareWave);
 
     let trig = ParamBool::new(true);
 
