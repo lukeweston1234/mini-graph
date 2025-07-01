@@ -1,5 +1,5 @@
-use indexmap::IndexSet;
-use std::collections::VecDeque;
+use indexmap::{set::Iter, IndexSet};
+use std::{collections::VecDeque};
 
 #[derive(Debug)]
 pub enum GraphError {
@@ -16,7 +16,7 @@ impl<N> Graph<N>{
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             nodes: Vec::with_capacity(capacity),
-            edges: vec![IndexSet::default(); capacity]
+            edges: vec![IndexSet::with_capacity(capacity); capacity]
         }
     }
     pub fn add_node(&mut self, data: N) -> usize{
@@ -33,6 +33,15 @@ impl<N> Graph<N>{
         }
         self.edges[source].insert(target);
         Ok(())
+    }
+    pub fn get_node(&mut self, index: usize) -> &mut N {
+        &mut self.nodes[index]
+    }
+    pub fn targets(&self, source: usize) -> Iter<'_, usize>{
+        self.edges[source].iter()
+    }
+    pub fn get_node_and_targets_mut(&mut self, index: usize) -> (&mut N, Iter<'_, usize>){
+        (&mut self.nodes[index], self.edges[index].iter())
     }
     pub fn topo_sort(&self) -> Result<Vec<usize>, GraphError> {
         let mut indegree = vec![0; self.nodes.len()];
@@ -75,7 +84,6 @@ impl<N> Graph<N>{
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::VecDeque;
 
     #[test]
     fn test_add_node() {
