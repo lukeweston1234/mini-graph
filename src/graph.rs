@@ -1,159 +1,127 @@
+use indexmap::IndexSet;
 use std::collections::VecDeque;
-pub struct Graph<T> {
-    nodes: Vec<GraphNode<T>>,
-    edges: Vec<Edge>,
+
+#[derive(Debug)]
+pub enum GraphError {
+    InvalidNode(usize),
+    CycleDetected
 }
 
-pub type NodeIndex = usize;
-
-pub struct GraphNode<T> {
-    data: T,
-    first_outgoing_edge: Option<EdgeIndex>,
+pub struct Graph<N> {
+    nodes: Vec<N>,
+    edges: Vec<IndexSet<usize>>
 }
 
-pub type EdgeIndex = usize;
-
-pub struct Edge {
-    target: NodeIndex,
-    next_outgoing_edge: Option<EdgeIndex>
-}
-
-impl<T> Graph<T> {
-    pub fn new(capacity: usize) -> Self {
-        Graph { nodes: Vec::with_capacity(capacity),
-                edges: Vec::with_capacity(capacity), }
+impl<N> Graph<N>{
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self {
+            nodes: Vec::with_capacity(capacity),
+            edges: vec![IndexSet::default(); capacity]
+        }
     }
-
-    pub fn add_node(&mut self, data: T) -> NodeIndex {
-        let index = self.nodes.len();
-        self.nodes.push(GraphNode { data, first_outgoing_edge: None });
-        index
+    pub fn add_node(&mut self, data: N) -> usize{
+        let id = self.nodes.len();
+        self.nodes.push(data);
+        id
     }
-
-    pub fn add_edge(&mut self, source: NodeIndex, target: NodeIndex) {
-        let edge_index = self.edges.len();
-        let node_data = &mut self.nodes[source];
-        self.edges.push(Edge {
-            target: target,
-            next_outgoing_edge: node_data.first_outgoing_edge
-        });
-        node_data.first_outgoing_edge = Some(edge_index);
+    pub fn add_edge(&mut self, source: usize, target: usize) -> Result<(), GraphError> {
+        if source >= self.edges.len(){
+            return Err(GraphError::InvalidNode(source));
+        }
+        if target >= self.edges.len(){
+            return Err(GraphError::InvalidNode(target));
+        }
+        self.edges[source].insert(target);
+        Ok(())
     }
-
-    fn successors(&self, source: NodeIndex) -> Successors<T> {
-        let first_outgoing_edge = self.nodes[source].first_outgoing_edge;
-        Successors { graph: self, current_edge_index: first_outgoing_edge }
-    }
-
-    #[inline(always)]
-    pub fn get_node_inner_ref(&mut self, index: usize) -> &mut T{
-        &mut self.nodes[index].data
-    }
-
-    pub fn topo_sort(&self) -> Option<Vec<NodeIndex>> {
+    pub fn topo_sort(&self) -> Result<Vec<usize>, GraphError> {
         let mut indegree = vec![0; self.nodes.len()];
 
-        for node in &self.edges {
-            indegree[node.target] += 1;
-        }
-
-        let mut no_incoming_edges_queue = VecDeque::new();
-        for (i, count) in indegree.iter().enumerate() {
-            if *count == 0 {
-                no_incoming_edges_queue.push_back(i);
+        for targets in &self.edges {
+            for target in targets {
+                indegree[*target] += 1;
             }
         }
 
-        let mut sorted = Vec::with_capacity(self.nodes.len());
-        while let Some(nx) = no_incoming_edges_queue.pop_front() {
-            sorted.push(nx);
-            for t in self.successors(nx){
-                indegree[t] -= 1;
-                if indegree[t] == 0 {
-                    no_incoming_edges_queue.push_back(t);
+        let mut no_incoming_edges_queue = VecDeque::new();
+        for (index, count) in indegree.iter().enumerate() {
+            if *count == 0 {
+                no_incoming_edges_queue.push_back(index);
+            }
+        }
+
+        let mut sorted: Vec<usize> = Vec::with_capacity(self.nodes.len());
+        while let Some(node_index) = no_incoming_edges_queue.pop_front() {
+            sorted.push(node_index);
+            if let Some(connections) = self.edges.get(node_index){
+                for v_id in connections {
+                    indegree[*v_id] -= 1;
+                    if indegree[*v_id] == 0 {
+                        no_incoming_edges_queue.push_back(*v_id);
+                    }
                 }
             }
         }
 
-        if sorted.len() == self.nodes.len(){
-            Some(sorted)
+        if sorted.len() == indegree.len() {
+            Ok(sorted)
         }
-        // Here, we don't have a directed graph
         else {
-            println!("topo sort failed");
-            for x in sorted {
-                println!("{:?}", x);
-            }
-            None
+            Err(GraphError::CycleDetected)
         }
     }
 }
 
-pub struct Successors<'a, T> {
-    graph: &'a Graph<T>,
-    current_edge_index: Option<EdgeIndex>,
-}
-
-impl<'a, T> Iterator for Successors<'a, T> {
-    type Item = NodeIndex;
-
-    fn next(&mut self) -> Option<NodeIndex> {
-        match self.current_edge_index {
-            None => None,
-            Some(edge_num) => {
-                let edge = &self.graph.edges[edge_num];
-                self.current_edge_index = edge.next_outgoing_edge;
-                Some(edge.target)
-            }
-        }
-    }
-}
-
-
-mod test {
+#[cfg(test)]
+mod tests {
     use super::*;
+    use std::collections::VecDeque;
 
     #[test]
-    fn example() {
+    fn test_add_node() {
+        let mut g: Graph<&'static str> = Graph::with_capacity(8);
+        let id = g.add_node("node0");
+        assert_eq!(id, 0);
+        assert_eq!(g.nodes.len(), 1);
+        assert!(g.edges[0].is_empty());
+    }
 
-        let mut graph_one = Graph::new(4);
+    #[test]
+    fn test_topo_sort_simple_chain() {
+        let mut g: Graph<&str> =  Graph::with_capacity(8);
+        let a = g.add_node("A");
+        let b = g.add_node("B");
+        let c = g.add_node("C");
+        let _ = g.add_edge(a, b);
+        let _ = g.add_edge(b, c);
 
-        let na0 = graph_one.add_node(0);
-        let na1 = graph_one.add_node(1);
-        let na2 = graph_one.add_node(2);
-        let na3 = graph_one.add_node(3);
+        let sorted = g.topo_sort().expect("should be a DAG");
+        assert_eq!(sorted, vec![a, b, c]);
+    }
 
-        graph_one.add_edge(na3, na0);
-        graph_one.add_edge(na1, na0);
-        graph_one.add_edge(na2, na0);
+    #[test]
+    fn test_topo_sort_multiple_roots() {
+        let mut g: Graph<&str> =  Graph::with_capacity(8);
+        let x = g.add_node("X");
+        let y = g.add_node("Y");
+        let z = g.add_node("Z");
+        // X→Z, Y→Z
+        let _ = g.add_edge(x, z);
+        let _ = g.add_edge(y, z);
 
-        let topo_one = graph_one.topo_sort();
+        let sorted = g.topo_sort().expect("should be a DAG");
+        assert_eq!(sorted.last(), Some(&z));
+        assert_eq!(sorted, vec![x, y, z]);
+    }
 
-        assert_eq!(topo_one, Some(vec![1,2,3,0]));
+    #[test]
+    fn test_topo_sort_cycle_detection() {
+        let mut g: Graph<&str> = Graph::with_capacity(8);
+        let p = g.add_node("P");
+        let q = g.add_node("Q");
+        let _ = g.add_edge(p, q);
+        let _ = g.add_edge(q, p);
 
-
-        let mut graph_two = Graph::new(6);
-
-        let nb0 = graph_two.add_node(0);
-        let nb1 = graph_two.add_node(1);
-        let nb2 = graph_two.add_node(2);
-        let nb3 = graph_two.add_node(3);
-        let nb4 = graph_two.add_node(4);
-        let nb5 = graph_two.add_node(5);
-        let nb6 = graph_two.add_node(6);
-
-        graph_two.add_edge(nb0, nb1);
-        graph_two.add_edge(nb0, nb2);
-        graph_two.add_edge(nb1, nb2);
-        graph_two.add_edge(nb2, nb3);
-        graph_two.add_edge(nb3, nb4);
-        graph_two.add_edge(nb4, nb5);
-        graph_two.add_edge(nb5, nb6);
-
-        let topo_sort_two = graph_two.topo_sort();
-
-
-        // assert_eq!(topo_sort, None);
-        assert_eq!(topo_sort_two, Some(vec![0,1,2,3,4,5,6]))
+        assert!(g.topo_sort().is_err(), "should detect a cycle");
     }
 }
