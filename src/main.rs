@@ -2,8 +2,14 @@ use mini_graph::mixer::Mixer;
 use mini_graph::osc::{Oscillator, Wave};
 use mini_graph::write::*;
 use mini_graph::audio_graph::AudioGraph;
+use assert_no_alloc::*;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{BufferSize, BuildStreamError, FromSample, SampleRate, SizedSample, StreamConfig};
+
+
+#[cfg(debug_assertions)] // required when disable_release is set (default)
+#[global_allocator]
+static A: AllocDisabler = AllocDisabler;
 
 const SAMPLE_RATE: u32 = 48_000;
 const FRAME_SIZE: usize = 1024;
@@ -33,11 +39,7 @@ where
     // ─── Mixer ───────────────────────────────────────────────────────────────────
     let mix_id = audio_graph.add_node(Box::new(Mixer::default()));
 
-    // ─── Wire them ────────────────────────────────────────────────────────────────
-    audio_graph.add_edge(id_0, mix_id);
-    audio_graph.add_edge(id_1, mix_id);
-    audio_graph.add_edge(id_2, mix_id);
-    audio_graph.add_edge(id_3, mix_id);
+    audio_graph.add_edges(&[(id_0, mix_id),(id_1, mix_id),(id_2, mix_id),(id_3,mix_id)]);
 
     // ─── Sink ─────────────────────────────────────────────────────────────────────
     audio_graph.set_sink_index(mix_id);
@@ -45,8 +47,7 @@ where
     let stream = device.build_output_stream(
         config,
         move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-            // assert_no_alloc( || write_data::<FRAME_SIZE, CHANNEL_COUNT, f32>(data, &mut audio_graph)) // TODO, remove vec alloc on audio thread when collecting inputs
-            write_data::<FRAME_SIZE, CHANNEL_COUNT, f32>(data, &mut audio_graph)
+            assert_no_alloc( || write_data::<FRAME_SIZE, CHANNEL_COUNT, f32>(data, &mut audio_graph))
         },
         |err| eprintln!("An output stream error occured: {}", err),
         None,

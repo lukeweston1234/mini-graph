@@ -3,6 +3,8 @@ use indexmap::IndexSet;
 use super::buffer::{Buffer, Frame};
 use super::node::*;
 
+const MAXIMUM_NODE_INPUTS: usize = 8;
+
 pub enum GraphError {
     CycleDetected
 }
@@ -10,6 +12,7 @@ pub enum GraphError {
 pub struct AudioGraph<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> {
     nodes: Vec<BoxedNode<BUFFER_SIZE, CHANNEL_COUNT>>,
     inputs: Vec<IndexSet<usize>>,
+    inputs_buffer: Vec<Frame<BUFFER_SIZE, CHANNEL_COUNT>>,
     outputs: Vec<IndexSet<usize>>,
     output_buffers: Vec<Frame<BUFFER_SIZE, CHANNEL_COUNT>>,
     sort_order: Vec<usize>,
@@ -20,6 +23,7 @@ impl<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> AudioGraph<BUFFER_SIZ
         Self {
             nodes: Vec::with_capacity(capacity),
             inputs: vec![IndexSet::with_capacity(capacity);capacity],
+            inputs_buffer: vec![[Buffer::<BUFFER_SIZE>::default(); CHANNEL_COUNT]; MAXIMUM_NODE_INPUTS],
             outputs: vec![IndexSet::with_capacity(capacity);capacity],
             output_buffers: vec![[Buffer::<BUFFER_SIZE>::default(); CHANNEL_COUNT]; capacity],
             sort_order: Vec::with_capacity(capacity),
@@ -34,6 +38,13 @@ impl<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> AudioGraph<BUFFER_SIZ
     pub fn add_edge(&mut self, from: usize, to: usize) {
         self.inputs[to].insert(from);
         self.outputs[from].insert(to);
+        self.invalidate_sort_order();
+    }
+    pub fn add_edges(&mut self, edges: &[(usize, usize)]){
+        for (from, to) in edges {
+            self.inputs[*to].insert(*from);
+            self.outputs[*from].insert(*to);
+        }
         self.invalidate_sort_order();
     }
     pub fn set_sink_index(&mut self, index: usize){
@@ -90,9 +101,17 @@ impl<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> AudioGraph<BUFFER_SIZ
             let node = &mut self.nodes[*index];
             let input_indexes = &self.inputs[*index];
 
-            let inputs: Vec<Frame<BUFFER_SIZE, CHANNEL_COUNT>> = input_indexes.iter().map(|i| self.output_buffers[*i]).collect();
 
-            node.process(inputs.as_slice(), &mut self.output_buffers[*index]);
+            self.inputs_buffer.clear();
+            self.inputs_buffer.reserve(input_indexes.len());
+
+            for &i in input_indexes {
+                self.inputs_buffer.push(self.output_buffers[i]);
+            }
+
+            // self.inputs_buffer = input_indexes.iter().map(|i| self.output_buffers[*i]).collect();
+
+            node.process(&self.inputs_buffer.as_slice(), &mut self.output_buffers[*index]);
         }
 
         &self.output_buffers[self.sink_index]
