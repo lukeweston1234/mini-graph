@@ -45,7 +45,7 @@ where
     let stream = device.build_output_stream(
         config,
         move |data: &mut [f32], _: &cpal::OutputCallbackInfo| {
-            // assert_no_alloc( || write_data::<FRAME_SIZE, CHANNEL_COUNT, f32>(data, &mut audio_graph))
+            // assert_no_alloc( || write_data::<FRAME_SIZE, CHANNEL_COUNT, f32>(data, &mut audio_graph)) // TODO, remove vec alloc on audio thread when collecting inputs
             write_data::<FRAME_SIZE, CHANNEL_COUNT, f32>(data, &mut audio_graph)
         },
         |err| eprintln!("An output stream error occured: {}", err),
