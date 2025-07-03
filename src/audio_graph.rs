@@ -109,8 +109,6 @@ impl<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> AudioGraph<BUFFER_SIZ
                 self.inputs_buffer.push(self.output_buffers[i]);
             }
 
-            // self.inputs_buffer = input_indexes.iter().map(|i| self.output_buffers[*i]).collect();
-
             node.process(&self.inputs_buffer.as_slice(), &mut self.output_buffers[*index]);
         }
 

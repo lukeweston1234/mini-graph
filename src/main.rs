@@ -1,3 +1,4 @@
+use mini_graph::gain::Gain;
 use mini_graph::mixer::Mixer;
 use mini_graph::osc::{Oscillator, Wave};
 use mini_graph::write::*;
@@ -39,10 +40,12 @@ where
     // ─── Mixer ───────────────────────────────────────────────────────────────────
     let mix_id = audio_graph.add_node(Box::new(Mixer::default()));
 
-    audio_graph.add_edges(&[(id_0, mix_id),(id_1, mix_id),(id_2, mix_id),(id_3,mix_id)]);
+    let gain_id = audio_graph.add_node(Box::new(Gain::new(1.2))); // Some clipping limited to -1, 1
+
+    audio_graph.add_edges(&[(id_0, mix_id),(id_1, mix_id),(id_2, mix_id),(id_3,mix_id), (mix_id, gain_id)]);
 
     // ─── Sink ─────────────────────────────────────────────────────────────────────
-    audio_graph.set_sink_index(mix_id);
+    audio_graph.set_sink_index(gain_id);
 
     let stream = device.build_output_stream(
         config,

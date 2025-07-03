@@ -41,10 +41,10 @@ impl<const N: usize> Oscillator<N> {
     }
 }
 impl<const N: usize, const C: usize> Node<N, C> for Oscillator<N> {
-    fn process(&mut self, _: &[Frame<N, C>], outputs: &mut Frame<N, C>){
+    fn process(&mut self, _: &[Frame<N, C>], output: &mut Frame<N, C>){
         for i in 0..N {
             let sample = self.tick_osc();
-            for buf in outputs.iter_mut() {
+            for buf in output.iter_mut() {
                 buf[i] = sample;
             }
         }
