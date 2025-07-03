@@ -3,7 +3,6 @@ use core::fmt;
 use core::ops::{Deref, DerefMut};
 
 pub type Frame<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> = [Buffer<BUFFER_SIZE>; CHANNEL_COUNT];
-
 #[derive(Clone, Copy)]
 pub struct Buffer<const BUFFER_SIZE: usize> {
     data: [f32; BUFFER_SIZE],
