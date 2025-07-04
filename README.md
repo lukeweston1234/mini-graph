@@ -1,10 +1,11 @@
 # mini-graph
 
-This repo serves mostly as a learning exercise for structuring larger projects, or a less opinionated audio graph framework for rolling your own nodes. For something more feature complete, I would suggest FunDSP, which has support for things like SIMD instructions.
+This repo serves mostly as a learning exercise for structuring larger projects, or a less opinionated audio graph framework for rolling your own nodes. For something more feature complete, I would suggest FunDSP, which has support for things like SIMD instructions, and  large library of already made DSP building blocks.
 
-The general DX revolves around the creation of nodes that implement the process trait, which lets users quickly build a graph of heap allocated nodes. For audio purposes, I would suggest allocating these either in a seperate thread of before your audio thread is started, in order to avoid any pops or cracks from missed audio frames. These nodes and edges are then topologically sorted, so that their dependencies compute before them. Each node then takes all of it's inputs, and writes to its associated output buffer. There is finally a sink index, that CPAL can pull from. 
+The general DX revolves around the creation of nodes that implement the process trait, which lets users quickly build a graph of heap allocated nodes (looking into a no_std alternative). For audio purposes, I would suggest allocating these either in a seperate thread of before your audio thread is started, in order to avoid any pops or cracks from missed audio frames. These nodes and edges are then topologically sorted, so that their dependencies compute before them. Each node then takes all of it's inputs, and writes to its associated output buffer. There is finally a sink index, that CPAL can pull from. Inputs are ordered implicitly by the order in which the graph was created.
 
-I am planning on writing a MIDI node system or something similar to PureData's midi building blocks, and I am also looking at eventually adding SIMD support or mutlithreading(perhaps computing graph branches with no shared dependencies?), although these are considerations for the future. 
+I am planning on writing a MIDI/Parameter/Bang system or something similar to PureData's midi building blocks, and I am also looking at eventually adding SIMD support or mutlithreading(perhaps computing graph branches with no shared dependencies?), although these are considerations for the future. 
+
 
 ### Example Node
 
@@ -36,3 +37,5 @@ impl <const N: usize, const C: usize> Node<N, C> for Gain<N> {
     }
 }
 ```
+
+### Tips
