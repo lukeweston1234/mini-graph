@@ -5,3 +5,6 @@ pub mod node;
 pub mod write;
 pub mod audio_graph;
 pub mod gain;
+pub mod delay_line;
+pub mod audio_context;
+pub mod graph;

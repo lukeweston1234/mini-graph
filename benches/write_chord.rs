@@ -1,8 +1,8 @@
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use mini_graph::buffer::{self, Buffer};
+use criterion::{criterion_group, criterion_main, Criterion};
+use mini_graph::buffer::{Buffer};
 use mini_graph::mixer::Mixer;
 use mini_graph::osc::{Oscillator, Wave};
-use mini_graph::audio_graph::AudioGraph;
+use mini_graph::audio_graph::{DynamicAudioGraph};
 use mini_graph::write::write_data;
 
 
@@ -10,8 +10,8 @@ const CHANNEL_COUNT: usize = 2;
 const FRAME_SIZE: usize = 512;
 const SAMPLE_RATE: u32 = 48_000;
 
-fn make_graph() -> AudioGraph<FRAME_SIZE, CHANNEL_COUNT> {
-    let mut audio_graph = AudioGraph::<FRAME_SIZE, CHANNEL_COUNT>::with_capacity(16);
+fn make_graph() -> DynamicAudioGraph<FRAME_SIZE, CHANNEL_COUNT> {
+    let mut audio_graph = DynamicAudioGraph::<FRAME_SIZE, CHANNEL_COUNT>::with_capacity(16);
 
     let id_0 = audio_graph.add_node(Box::new(
         Oscillator::new(261.63, SAMPLE_RATE, 0.0, Wave::SinWave)

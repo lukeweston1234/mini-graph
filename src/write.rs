@@ -1,7 +1,6 @@
 use cpal::{FromSample, SizedSample};
 
-use super::audio_graph::AudioGraph;
-
+use crate::audio_graph::DynamicAudioGraph;
 
 // / The function that takes an input from the audio pipeline, 
 // / and delivers it to the CPAL slice. The CPAL slice is a 
@@ -11,7 +10,7 @@ use super::audio_graph::AudioGraph;
 #[inline(always)]
 pub fn write_data<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize, T>(
     output: &mut [T],
-    audio_graph: &mut AudioGraph<BUFFER_SIZE, CHANNEL_COUNT>,
+    audio_graph: &mut DynamicAudioGraph<BUFFER_SIZE, CHANNEL_COUNT>
 )
 where
     T: SizedSample + FromSample<f64>,

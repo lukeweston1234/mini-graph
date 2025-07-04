@@ -12,6 +12,7 @@ impl<const N: usize> Gain<N> {
     }
 }
 impl <const N: usize, const C: usize> Node<N, C> for Gain<N> {
+    #[inline(always)]
     fn process(&mut self, inputs: &[Frame<N, C>], output: &mut Frame<N, C>){
         // This node only takes an input of one stereo buffer.
         let input = inputs[0];
