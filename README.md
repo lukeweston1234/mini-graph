@@ -37,5 +37,3 @@ impl <const N: usize, const C: usize> Node<N, C> for Gain<N> {
     }
 }
 ```
-
-### Tips
