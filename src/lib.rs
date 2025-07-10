@@ -9,3 +9,7 @@ pub mod delay_line;
 pub mod audio_context;
 pub mod graph;
 pub mod gate;
+pub mod adsr;
+pub mod math;
+pub mod clock;
+pub mod log;
