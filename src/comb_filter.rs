@@ -31,6 +31,9 @@ impl<const N: usize, const C: usize> CombFilter<N, C>{
 impl<const N: usize, const C: usize> Node<N, C> for CombFilter<N, C> {
     #[inline(always)]
     fn process(&mut self, inputs: &[Frame<N, C>], output: &mut Frame<N, C>) {
+        if self.feedback >= 1.0 {
+            panic!("Don't do this")
+        }
         let input = inputs[0];
         for n in 0..N {
             for c in 0..C {

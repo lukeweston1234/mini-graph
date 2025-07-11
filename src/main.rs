@@ -90,7 +90,7 @@ where
 
     audio_graph.add_edge(adsr_two, mixer);
 
-    let delay_line = audio_graph.add_node(Box::new(DelayLine::new(12000)));
+    let delay_line = audio_graph.add_node(Box::new(CombFilter::new(12000, 0.8)));
 
     let master_bus = audio_graph.add_node(Box::new(Mixer {}));
 
@@ -104,9 +104,13 @@ where
 
     audio_graph.add_edge(delay_line, master_bus);
 
-    let limiter = audio_graph.add_node(Box::new(HardClipper::new(0.06)));
+    let limiter = audio_graph.add_node(Box::new(HardClipper::new(0.8)));
 
-    audio_graph.add_edge(master_bus, limiter);
+    let master_gain = audio_graph.add_node(Box::new(Gain::new(0.2)));
+
+    audio_graph.add_edge(master_bus, master_gain);
+
+    audio_graph.add_edge(master_gain, limiter);
 
     audio_graph.set_sink_index(limiter);
 
