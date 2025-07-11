@@ -10,7 +10,6 @@ use super::node::BoxedNode;
 use super::graph::{DynamicGraph, Graph};
 
 const MAXIMUM_BANG_INPUT_PORTS: usize = 4;
-const MAXIMUM_BANG_OUTPUT_PORTS: usize = 4;
 
 pub struct DynamicAudioGraph<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> {
     graph: DynamicGraph<BoxedNode<BUFFER_SIZE, CHANNEL_COUNT>>,

@@ -2,29 +2,32 @@ use std::collections::VecDeque;
 use crate::node::Node;
 use crate::buffer::Frame;
 
-pub struct DelayLine<const N: usize, const C: usize> {
+pub struct CombFilter<const N: usize, const C: usize> {
     ringbufs: [VecDeque<f32>; C],
+    feedback: f32,
 }
 
-impl<const N: usize, const C: usize> DelayLine<N, C>{
-    pub fn new(delay_len: usize) -> Self {
+impl<const N: usize, const C: usize> CombFilter<N, C>{
+    pub fn new(delay_len: usize, feedback: f32) -> Self {
         let ringbufs = std::array::from_fn(|_| {
             let mut buf = VecDeque::with_capacity(delay_len);
             buf.extend(std::iter::repeat(0.0).take(delay_len));
             buf
         });
-        Self { ringbufs }
+        Self { ringbufs, feedback }
     }
 
     fn tick(&mut self, chan: usize, input: f32) -> f32 {
         let buf = &mut self.ringbufs[chan];
         let out = buf.pop_front().unwrap();
-        buf.push_back(input);
+
+        let float_with_feedback = input + self.feedback * out;
+        buf.push_back(float_with_feedback);
         out
     }
 }
 
-impl<const N: usize, const C: usize> Node<N, C> for DelayLine<N, C> {
+impl<const N: usize, const C: usize> Node<N, C> for CombFilter<N, C> {
     #[inline(always)]
     fn process(&mut self, inputs: &[Frame<N, C>], output: &mut Frame<N, C>) {
         let input = inputs[0];

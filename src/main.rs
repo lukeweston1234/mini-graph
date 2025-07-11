@@ -1,9 +1,12 @@
 use std::time::Duration;
 
+use mini_graph::adsr::ADSR;
 use mini_graph::clock::Clock;
+use mini_graph::comb_filter::CombFilter;
 use mini_graph::delay_line::DelayLine;
 use mini_graph::gain::Gain;
 use mini_graph::gate::Gate;
+use mini_graph::hard_clipper::HardClipper;
 use mini_graph::log::Log;
 use mini_graph::mixer::Mixer;
 use mini_graph::osc::{Oscillator, Wave};
@@ -26,7 +29,7 @@ fn run<const N: usize, T>(device: &cpal::Device, config: &cpal::StreamConfig) ->
 where
     T: SizedSample + FromSample<f64>,
 {
-    let mut audio_graph = DynamicAudioGraph::<FRAME_SIZE, CHANNEL_COUNT>::with_capacity(16);
+    let mut audio_graph = DynamicAudioGraph::<FRAME_SIZE, CHANNEL_COUNT>::with_capacity(32);
     
     // let master_id = audio_graph.add_node(Box::new(Mixer::default()));
 
@@ -63,13 +66,50 @@ where
 
     let clock_id = audio_graph.add_node(Box::new(Clock::new(SAMPLE_RATE, Duration::from_secs(1))));
 
-    let log_id = audio_graph.add_node(Box::new(Log {}));
+    let clock_two = audio_graph.add_node(Box::new(Clock::new(SAMPLE_RATE, Duration::from_secs_f32(1.0 / 3.0))));
 
-    let gate_id = audio_graph.add_node(Box::new(Gate::new()));
+    let osc_id = audio_graph.add_node(Box::new(Oscillator::new(440.0, SAMPLE_RATE, 0.0, Wave::SinWave)));
 
-    audio_graph.add_edge(clock_id, log_id);
+    let osc_two = audio_graph.add_node(Box::new(Oscillator::new(880.0, SAMPLE_RATE, 0.0, Wave::SinWave)));
 
-    audio_graph.set_sink_index(gate_id);
+    let adsr_id = audio_graph.add_node(Box::new(ADSR::new(SAMPLE_RATE)));
+
+    let adsr_two = audio_graph.add_node(Box::new(ADSR::new(SAMPLE_RATE)));
+
+    audio_graph.add_edge(osc_two, adsr_two);
+
+    audio_graph.add_edge(osc_id, adsr_id);
+
+    audio_graph.add_edge(clock_id, adsr_id);
+
+    audio_graph.add_edge(clock_two, adsr_two);
+
+    let mixer = audio_graph.add_node(Box::new(Mixer {}));
+
+    audio_graph.add_edge(adsr_id, mixer);
+
+    audio_graph.add_edge(adsr_two, mixer);
+
+    let delay_line = audio_graph.add_node(Box::new(DelayLine::new(12000)));
+
+    let master_bus = audio_graph.add_node(Box::new(Mixer {}));
+
+    audio_graph.add_edge(mixer, delay_line);
+
+    let dry = audio_graph.add_node(Box::new(Gain::new(0.3)));
+
+    audio_graph.add_edge(mixer, dry);
+
+    audio_graph.add_edge(dry, master_bus);
+
+    audio_graph.add_edge(delay_line, master_bus);
+
+    let limiter = audio_graph.add_node(Box::new(HardClipper::new(0.06)));
+
+    audio_graph.add_edge(master_bus, limiter);
+
+    audio_graph.set_sink_index(limiter);
+
 
     let stream = device.build_output_stream(
         config,

@@ -14,7 +14,7 @@ pub enum Bang {
 }
 
 pub trait Node<const N: usize, const C: usize> {
-    fn process(&mut self, inputs: &[Frame<N, C>], output: &mut Frame<N, C>){ }
+    fn process(&mut self, inputs: &[Frame<N, C>], output: &mut Frame<N, C>){}
     fn handle_bang(&mut self, inputs: &[Bang], output: &mut Bang) { }
 }
 

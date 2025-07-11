@@ -1,60 +1,61 @@
-use std::time::Duration;
-
 use assert_no_alloc::permit_alloc;
-
 use crate::node::{Node, Bang};
-use crate::buffer::Frame;
 
 pub struct Clock<const N: usize, const C: usize> {
-    sample_rate: f32,
+    sample_rate: u32,
     is_ticking: bool,
-    time_ellapsed: Duration,
-    clock_rate: Duration
+    tick_period_samples: u64,
+    samples_accum: u64,
 }
-impl<const N: usize, const C: usize> Clock <N, C> {
-    pub fn new(sample_rate: u32, clock_rate: Duration) -> Self {
+
+impl<const N: usize, const C: usize> Clock<N, C> {
+    pub fn new(sample_rate: u32, clock_rate: std::time::Duration) -> Self {
+        let period_secs = clock_rate.as_secs_f32();
+        let tick_period_samples = (period_secs * sample_rate as f32).round() as u64;
+
         Self {
-            sample_rate: sample_rate as f32,
+            sample_rate,
             is_ticking: true,
-            clock_rate,
-            time_ellapsed: Duration::from_secs(0)
+            tick_period_samples,
+            samples_accum: 0,
         }
     }
 }
-impl<const N: usize, const C: usize>  Node<N,C> for Clock<N, C>{
-    fn process(&mut self, _: &[Frame<N, C>], _: &mut Frame<N, C>) {
-        return
-    }
+
+impl<const N: usize, const C: usize> Node<N, C> for Clock<N, C> {
     fn handle_bang(&mut self, inputs: &[Bang], output: &mut Bang) {
-        permit_alloc(|| {
-            if let Some(ref bang) = inputs.get(0){
-                match bang {
-                    Bang::Bang => self.is_ticking = !self.is_ticking,
-                    Bang::BangBool(val) => self.is_ticking = *val,
-                    _ => ()
+        if let Some(b) = inputs.get(0) {
+            match b {
+                Bang::Bang => self.is_ticking = !self.is_ticking,
+                Bang::BangBool(val) => self.is_ticking = *val,
+                _ => (),
+            }
+        }
+        if let Some(b) = inputs.get(1) {
+            match b {
+                Bang::BangF32(val) => {
+                    let new_period = (*val * self.sample_rate as f32).round() as u64;
+                    self.tick_period_samples = new_period;
                 }
-            }
-            if let Some(ref bang) = inputs.get(1) {
-                match bang {
-                    Bang::BangF32(val) => self.clock_rate = Duration::from_secs_f32(*val),
-                    Bang::BangU32(val) => self.clock_rate = Duration::from_secs(*val as u64),
-                    _ => ()
+                Bang::BangU32(val) => {
+                    let new_period = (*val as f32 * self.sample_rate as f32).round() as u64;
+                    self.tick_period_samples = new_period;
                 }
+                _ => (),
             }
-            if !self.is_ticking {
-                return;
-            }
-            if self.time_ellapsed > self.clock_rate {
-                self.time_ellapsed = Duration::from_secs(0);
-            }
-            else {
-                *output = Bang::Empty;
-            }
-            let delta_time = N as f32 / self.sample_rate;
-            if self.time_ellapsed == Duration::from_secs_f64(0.0) {
-                *output = Bang::Bang;
-            }
-            self.time_ellapsed += Duration::from_secs_f32(delta_time);
-        })
+        }
+
+        if !self.is_ticking {
+            *output = Bang::Empty;
+            return;
+        }
+
+        self.samples_accum += N as u64;
+        if self.samples_accum >= self.tick_period_samples {
+            *output = Bang::Bang;
+            self.samples_accum -= self.tick_period_samples;
+        } else {
+            *output = Bang::Empty;
+        }
     }
 }

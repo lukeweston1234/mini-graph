@@ -1,83 +1,134 @@
-use crate::node::{Node, Bang};
-use crate::buffer::Frame;
-use crate::math::lerp;
-pub struct ADSR<const FRAME_SIZE: usize, const CHANNELS: usize>{
-    attack: f32,
-    decay: f32,
-    sustain: f32,
-    release: f32,
-    // delta_time parameters for time elapsed
-    delta_time: f32,
-    delta_release_time: f32,
+use crate::{buffer::Frame, node::{Bang, Node}};
 
-    amplitude_scalar: f32,
-    gate: bool,
+enum Stage {
+    Idle,
+    Attack,
+    Decay,
+    Sustain,
+    Release,
+}
+
+pub struct ADSR<const N: usize, const C: usize> {
+    // envelope parameters, in seconds:
+    attack_time:  f32,
+    decay_time:   f32,
+    sustain_time: f32,     // if you want a hold duration
+    release_time: f32,
+
+    // envelope levels:
+    sustain_level: f32,    // 0.0 … 1.0
+
+    // dynamic state:
+    stage: Stage,
+    time_in_stage:    f32,
+    release_start_level: f32,
 
     sample_rate: f32,
 }
+
 impl<const N: usize, const C: usize> ADSR<N, C> {
     pub fn new(sample_rate: u32) -> Self {
         Self {
-            attack: 4.0,
-            sustain: 3.0,
-            decay: 4.0,
-            release:5.0,
-            delta_release_time: 0.0,
+            attack_time:   0.1,   // e.g. 10 ms
+            decay_time:    0.1,    // e.g. 200 ms
+            sustain_time:  0.0,    // 0 for infinite sustain until note-off
+            release_time:  0.2,    // e.g. 500 ms
+
+            sustain_level: 0.1,    // 70% amplitude
+
+            stage: Stage::Idle,
+            time_in_stage: 0.0,
+            release_start_level: 0.0,
+
             sample_rate: sample_rate as f32,
-            delta_time: 0.0,
-            amplitude_scalar: 0.0,
-            gate: false,
+        }
+    }
+
+    fn note_on(&mut self) {
+        self.stage = Stage::Attack;
+        self.time_in_stage = 0.0;
+    }
+
+    fn note_off(&mut self) {
+        // capture whatever level we’re at, then go to release
+        let current = self.current_level();
+        self.release_start_level = current;
+        self.stage = Stage::Release;
+        self.time_in_stage = 0.0;
+    }
+
+    /// compute current envelope level *before* advancing time
+    fn current_level(&self) -> f32 {
+        match self.stage {
+            Stage::Idle    => 0.0,
+            Stage::Attack  => (self.time_in_stage / self.attack_time).min(1.0),
+            Stage::Decay   => {
+                let t = (self.time_in_stage / self.decay_time).min(1.0);
+                1.0 + t * (self.sustain_level - 1.0) // lerp(1.0, sustain_level, t)
+            }
+            Stage::Sustain => self.sustain_level,
+            Stage::Release => {
+                let t = (self.time_in_stage / self.release_time).min(1.0);
+                self.release_start_level * (1.0 - t) // lerp(release_start, 0.0, t)
+            }
         }
     }
 }
 
-impl<const N: usize, const C: usize> Node<N, C> for  ADSR<N, C> {
+impl<const N: usize, const C: usize> Node<N, C> for ADSR<N, C> {
     fn process(&mut self, inputs: &[Frame<N, C>], output: &mut Frame<N, C>) {
+        let dt = 1.0 / self.sample_rate;
         let input = inputs[0];
-        let mut volume = 0.0;
-        
-        for n in 0..N {
-            if self.delta_time < self.attack {
-                volume = lerp(0.0, 1.0, self.delta_time / self.attack);
-            }
-            else if self.gate {
-                let decay_delta = self.delta_time - self.attack;
-    
-                if decay_delta < self.decay {
-                    volume = lerp(1.0, self.sustain, decay_delta / self.decay as f32);
-                }
-                else {
-                    volume = self.sustain;
-                }
-                self.amplitude_scalar = volume;
-            }
-            else {
-                if self.delta_release_time < self.release {
-                    volume = lerp(self.amplitude_scalar, 0.0, self.delta_release_time / self.release as f32);
-                }
-                else {
-                    volume = 0.0;
-                }
-                if self.delta_release_time < self.release{
-                    let inc_time = (1.0) / self.sample_rate as f32;
-                    self.delta_release_time += inc_time;
-                }
-            }
-                
-            self.delta_time += 1.0 / self.sample_rate;
 
+        for n in 0..N {
+            // 1) get current envelope level
+            let level = self.current_level();
+
+            // 2) write out
             for c in 0..C {
-                output[c][n] = input[c][n] * volume;
+                output[c][n] = input[c][n] * level;
+            }
+
+            // 3) advance timer and handle stage transitions
+            self.time_in_stage += dt;
+            match self.stage {
+                Stage::Attack if self.time_in_stage >= self.attack_time => {
+                    self.stage = Stage::Decay;
+                    self.time_in_stage = 0.0;
+                }
+                Stage::Decay if self.time_in_stage >= self.decay_time => {
+                    if self.sustain_time > 0.0 {
+                        self.stage = Stage::Sustain;
+                        self.time_in_stage = 0.0;
+                    } else {
+                        // if no sustain-time, stay at sustain level until note-off
+                        self.stage = Stage::Sustain;
+                    }
+                }
+                Stage::Sustain if self.sustain_time > 0.0
+                    && self.time_in_stage >= self.sustain_time =>
+                {
+                    // auto-release after a fixed hold
+                    self.note_off();
+                }
+                Stage::Release if self.time_in_stage >= self.release_time => {
+                    self.stage = Stage::Idle;
+                    self.time_in_stage = 0.0;
+                }
+                _ => {}
             }
         }
     }
+
     fn handle_bang(&mut self, inputs: &[Bang], _: &mut Bang) {
-        let res = inputs.get(0);
-        if let Some(bang) = res {
-            match *bang {
-                Bang::Bang => self.gate = !self.gate,
-                Bang::BangBool(val) => self.gate = val,
-                _ => (),
+        for &bang in inputs {
+            if let Bang::Bang = bang {
+                // you probably want distinct on/off bangs; adjust as needed:
+                if matches!(self.stage, Stage::Idle) {
+                    self.note_on();
+                } else {
+                    self.note_off();
+                }
             }
         }
     }

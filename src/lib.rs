@@ -13,3 +13,5 @@ pub mod adsr;
 pub mod math;
 pub mod clock;
 pub mod log;
+pub mod comb_filter;
+pub mod hard_clipper;
