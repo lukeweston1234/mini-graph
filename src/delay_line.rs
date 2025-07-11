@@ -16,6 +16,7 @@ impl<const N: usize, const C: usize> DelayLine<N, C>{
         Self { ringbufs }
     }
 
+    #[inline(always)]
     fn tick(&mut self, chan: usize, input: f32) -> f32 {
         let buf = &mut self.ringbufs[chan];
         let out = buf.pop_front().unwrap();

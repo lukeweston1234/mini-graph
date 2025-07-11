@@ -17,6 +17,7 @@ impl<const N: usize, const C: usize> CombFilter<N, C>{
         Self { ringbufs, feedback }
     }
 
+    #[inline(always)]
     fn tick(&mut self, chan: usize, input: f32) -> f32 {
         let buf = &mut self.ringbufs[chan];
         let out = buf.pop_front().unwrap();
