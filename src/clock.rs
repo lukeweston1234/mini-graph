@@ -45,13 +45,15 @@ impl<const N: usize, const C: usize>  Node<N,C> for Clock<N, C>{
                 return;
             }
             if self.time_ellapsed > self.clock_rate {
-                *output = Bang::Bang;
                 self.time_ellapsed = Duration::from_secs(0);
             }
             else {
                 *output = Bang::Empty;
             }
             let delta_time = N as f32 / self.sample_rate;
+            if self.time_ellapsed == Duration::from_secs_f64(0.0) {
+                *output = Bang::Bang;
+            }
             self.time_ellapsed += Duration::from_secs_f32(delta_time);
         })
     }
