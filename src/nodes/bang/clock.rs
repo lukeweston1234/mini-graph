@@ -1,5 +1,5 @@
-use assert_no_alloc::permit_alloc;
-use crate::node::{Node, Bang};
+use crate::mini_graph::node::Node;
+use crate::mini_graph::bang::Bang;
 
 pub struct Clock<const N: usize, const C: usize> {
     sample_rate: u32,

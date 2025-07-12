@@ -1,6 +1,8 @@
 use std::collections::VecDeque;
-use crate::node::Node;
-use crate::buffer::Frame;
+
+use crate::mini_graph::node::Node;
+use crate::mini_graph::buffer::{Frame};
+
 
 pub struct DelayLine<const N: usize, const C: usize> {
     ringbufs: [VecDeque<f32>; C],

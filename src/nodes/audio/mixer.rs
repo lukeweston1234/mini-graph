@@ -1,5 +1,5 @@
-use crate::node::Node;
-use crate::buffer::Frame;
+use crate::mini_graph::node::Node;
+use crate::mini_graph::buffer::{Frame};
 
 #[derive(Default)]
 pub struct Mixer<const N: usize> {}

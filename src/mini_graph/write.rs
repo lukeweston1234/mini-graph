@@ -1,6 +1,6 @@
 use cpal::{FromSample, SizedSample};
 
-use crate::audio_graph::DynamicAudioGraph;
+use crate::mini_graph::audio_graph::DynamicAudioGraph;
 
 // / The function that takes an input from the audio pipeline, 
 // / and delivers it to the CPAL slice. The CPAL slice is a 

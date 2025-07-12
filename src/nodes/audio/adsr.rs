@@ -1,4 +1,6 @@
-use crate::{buffer::Frame, node::{Bang, Node}};
+use crate::mini_graph::bang::Bang;
+use crate::mini_graph::node::Node;
+use crate::mini_graph::buffer::Frame;
 
 enum Stage {
     Idle,

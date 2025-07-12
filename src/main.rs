@@ -1,17 +1,9 @@
 use std::time::Duration;
 
-use mini_graph::adsr::ADSR;
-use mini_graph::clock::Clock;
-use mini_graph::comb_filter::CombFilter;
-use mini_graph::delay_line::DelayLine;
-use mini_graph::gain::Gain;
-use mini_graph::gate::Gate;
-use mini_graph::hard_clipper::HardClipper;
-use mini_graph::log::Log;
-use mini_graph::mixer::Mixer;
-use mini_graph::osc::{Oscillator, Wave};
-use mini_graph::write::*;
-use mini_graph::audio_graph::{DynamicAudioGraph};
+use mini_graph::mini_graph::audio_graph::DynamicAudioGraph;
+use mini_graph::mini_graph::write::write_data;
+use mini_graph::nodes::bang::clock::Clock;
+use mini_graph::nodes::audio::{adsr::ADSR, comb_filter::CombFilter, mixer:: Mixer, gain::Gain, hard_clipper::HardClipper, osc::*};
 use assert_no_alloc::*;
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{BufferSize, BuildStreamError, FromSample, SampleRate, SizedSample, StreamConfig};
@@ -30,41 +22,8 @@ where
     T: SizedSample + FromSample<f64>,
 {
     let mut audio_graph = DynamicAudioGraph::<FRAME_SIZE, CHANNEL_COUNT>::with_capacity(32);
-    
-    // let master_id = audio_graph.add_node(Box::new(Mixer::default()));
 
-    // // ─── Oscillators ────────────────────────────────────────────────────────────────
-    // // 1 (C₄), 7 (B₄), 5 (G₄), 3 (E₄)
-    // let osc_1 = audio_graph.add_node(Box::new(
-    //     Oscillator::new(261.63, SAMPLE_RATE, 0.0, Wave::SinWave) // C₄
-    // ));
-    // let osc_2 = audio_graph.add_node(Box::new(
-    //     Oscillator::new(493.88, SAMPLE_RATE, 0.0, Wave::SinWave) // B₄
-    // ));
-    // let osc_3 = audio_graph.add_node(Box::new(
-    //     Oscillator::new(392.00, SAMPLE_RATE, 0.0, Wave::SinWave) // G₄
-    // ));
-    // let osc_4 = audio_graph.add_node(Box::new(
-    //     Oscillator::new(329.63, SAMPLE_RATE, 0.0, Wave::SinWave) // E₄
-    // ));
-
-    // // ─── Mixer ───────────────────────────────────────────────────────────────────
-    // let chord_bus = audio_graph.add_node(Box::new(Mixer::default()));
-
-    // let gain_id = audio_graph.add_node(Box::new(Gain::new(0.8))); // Some clipping limited to -1, 1
-
-    // let delay_id = audio_graph.add_node(Box::new(DelayLine::new(12000)));
-
-    // let delay_gain_id = audio_graph.add_node(Box::new(Gain::new(0.8)));
-
-
-    // audio_graph.add_edges(&[(osc_1, chord_bus),(osc_2, chord_bus),(osc_3, chord_bus),(osc_4,chord_bus), (chord_bus, gain_id), (gain_id, master_id)]);
-
-    // audio_graph.add_edges(&[(chord_bus, delay_id), (delay_id, delay_gain_id), (delay_gain_id, master_id)]);
-    // // ─── Sink ─────────────────────────────────────────────────────────────────────
-    // audio_graph.set_sink_index(master_id);
-
-    let clock_id = audio_graph.add_node(Box::new(Clock::new(SAMPLE_RATE, Duration::from_secs(1))));
+    let clock_id = audio_graph.add_node(Box::new(Clock::new(SAMPLE_RATE, Duration::from_secs_f32(1.0))));
 
     let clock_two = audio_graph.add_node(Box::new(Clock::new(SAMPLE_RATE, Duration::from_secs_f32(1.0 / 3.0))));
 
@@ -92,17 +51,21 @@ where
 
     let delay_line = audio_graph.add_node(Box::new(CombFilter::new(12000, 0.8)));
 
+    let delay_line_two = audio_graph.add_node(Box::new(CombFilter::new(22000, 0.4)));
+
     let master_bus = audio_graph.add_node(Box::new(Mixer {}));
 
     audio_graph.add_edge(mixer, delay_line);
+    audio_graph.add_edge(delay_line, delay_line_two);
 
-    let dry = audio_graph.add_node(Box::new(Gain::new(0.3)));
+
+    let dry = audio_graph.add_node(Box::new(Gain::new(0.6)));
 
     audio_graph.add_edge(mixer, dry);
 
     audio_graph.add_edge(dry, master_bus);
 
-    audio_graph.add_edge(delay_line, master_bus);
+    audio_graph.add_edge(delay_line_two, master_bus);
 
     let limiter = audio_graph.add_node(Box::new(HardClipper::new(0.8)));
 

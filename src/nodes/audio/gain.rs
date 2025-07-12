@@ -1,5 +1,5 @@
-use crate::node::Node;
-use crate::buffer::Frame;
+use crate::mini_graph::node::Node;
+use crate::mini_graph::buffer::{Frame};
 
 pub struct Gain<const FRAME_SIZE: usize> {
     gain: f32 // Arc<AtomicF32> might be more helpful. If you need an atomic f32 there is an easy trick

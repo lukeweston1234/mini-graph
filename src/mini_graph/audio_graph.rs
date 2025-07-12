@@ -1,9 +1,9 @@
+use crate::mini_graph::bang::Bang;
+
 pub trait AudioGraph<const BUFFER_SIZE: usize, const CHANNEL_COUNT: usize> {
     fn next_block(&mut self) -> &Frame<BUFFER_SIZE, CHANNEL_COUNT>;
     fn invalidate_sort_order(&mut self);
 }
-
-use crate::node::Bang;
 
 use super::buffer::{Buffer, Frame};
 use super::node::BoxedNode;

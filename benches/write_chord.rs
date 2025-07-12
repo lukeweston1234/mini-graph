@@ -1,9 +1,10 @@
 use criterion::{criterion_group, criterion_main, Criterion};
-use mini_graph::buffer::{Buffer};
-use mini_graph::mixer::Mixer;
-use mini_graph::osc::{Oscillator, Wave};
-use mini_graph::audio_graph::{DynamicAudioGraph};
-use mini_graph::write::write_data;
+use mini_graph::mini_graph::audio_graph::DynamicAudioGraph;
+use mini_graph::nodes::audio::osc::{Oscillator, Wave};
+use mini_graph::nodes::audio::mixer::Mixer;
+use mini_graph::mini_graph::write::write_data;
+use mini_graph::mini_graph::buffer::Buffer;
+
 
 
 const CHANNEL_COUNT: usize = 2;

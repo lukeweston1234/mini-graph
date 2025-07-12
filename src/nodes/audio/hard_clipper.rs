@@ -1,4 +1,5 @@
-use crate::{buffer::Frame, node::Node};
+use crate::mini_graph::node::Node;
+use crate::mini_graph::buffer::{Frame};
 
 pub struct HardClipper<const FRAME_SIZE: usize> {
     limit: f32,

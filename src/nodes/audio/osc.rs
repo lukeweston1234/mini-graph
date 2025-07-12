@@ -1,5 +1,5 @@
-use crate::buffer::{Frame};
-use crate::node::Node;
+use crate::mini_graph::node::Node;
+use crate::mini_graph::buffer::{Frame};
 
 pub enum Wave {
     SinWave,
