@@ -46,4 +46,4 @@ impl <const N: usize, const C: usize> Node<N, C> for Gain<N> {
 
 ### Future Development
 
-I am currently reworking this into a new repoafter my requirements changed, stay tuned for updates!
+I am currently reworking this into a new repo after my requirements changed, stay tuned for updates!
