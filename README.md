@@ -43,3 +43,7 @@ impl <const N: usize, const C: usize> Node<N, C> for Gain<N> {
 - Proc macro for quickly generating graphs for prototyping
 - Sized/fixed graph for no_std environments, final deployments, etc.
 - Hopefully some sort of SIMD acceleration for more expensive operations like reverb, fft, etc.
+
+### Future Development
+
+I am currently reworking this into a new repoafter my requirements changed, stay tuned for updates!
